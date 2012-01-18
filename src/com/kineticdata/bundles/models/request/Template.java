@@ -6,6 +6,8 @@ import java.util.*;
 import com.kd.arsHelpers.*;
 // Import the ArsBase class
 import com.kineticdata.bundles.models.ArsBase;
+// Import the Task association classes
+import com.kineticdata.bundles.models.task.*;
 
 /**
  *
@@ -37,6 +39,7 @@ public class Template {
     private List<TemplateAttribute> attributes;
     private Catalog catalog;
     private List<Category> categories;
+    private List<TaskTree> taskTrees;
 
     // Declare the memoized variables
     private String categorizationString;
@@ -157,12 +160,23 @@ public class Template {
      * ASSOCIATION METHODS
      **************************************************************************/
 
+    public void addAttribute(TemplateAttribute attribute) {
+        if (attributes == null) { attributes = new ArrayList(); }
+        attributes.add(attribute);
+    }
+
+    public void addCategory(Category category) {
+        if (categories == null) { categories = new ArrayList(); }
+        categories.add(category);
+    }
+
     public List<TemplateAttribute> getAttributes() {
         // If the association has not been retrieved yet
         if (attributes == null) {
-            throw new UnsupportedOperationException("Not implemented.");
+            // Build the association associated records
+            attributes = TemplateAttribute.findByTemplateId(context, this.getId());
         }
-        // Return the association
+        // Return the associated records
         return attributes;
     }
 
@@ -179,10 +193,48 @@ public class Template {
     public List<Category> getCategories() {
         // If the association has not been retrieved yet
         if (categories == null) {
-            throw new UnsupportedOperationException("Not implemented.");
+            // Initialize the association
+            categories = new ArrayList();
+            // Retrieve all categories for the current catalog (This is done so
+            // that all categories can be retrieved in a single query.  There is
+            // no form available that includes all of the necessary Template
+            // fields and the category name or id, and it is faster to retrieve
+            // all categories for a catalog and filter them via code than to
+            // retrieve each category individually).
+            Map<String,Category> catalogCategories = getCatalog().getCategoriesMap();
+            // Retrieve all of the categorizations associated to this category
+            List<Categorization> categorizations = Categorization.findByTemplateId(context, getId());
+            // For each of the categorizations
+            for (Categorization categorization : categorizations) {
+                // Add the record to the association if it exists
+                Category category = catalogCategories.get(categorization.getTemplateId());
+                if (category != null) { categories.add(category); }
+            }
         }
         // Return the association
         return categories;
+    }
+
+    public List<TaskTree> getTaskTrees() {
+        // If the association has not been retrieved yet
+        if (taskTrees == null) {
+            // Load the association
+            taskTrees = TaskTree.findBySource(context, "Kinetic Request", getId());
+        }
+        // Return the associated object
+        return taskTrees;
+    }
+
+    public void setAttributes(List<TemplateAttribute> attributes) {
+        this.attributes = attributes;
+    }
+
+    public void setCatalog(Catalog catalog) {
+        this.catalog = catalog;
+    }
+
+    public void setCategories(List<Category> categories) {
+        this.categories = categories;
     }
 
     /***************************************************************************
@@ -228,6 +280,6 @@ public class Template {
     }
 
     public boolean hasCategories() {
-        throw new UnsupportedOperationException("Not implemented.");
+        return !getCategories().isEmpty();
     }
 }

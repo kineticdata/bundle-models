@@ -41,9 +41,10 @@ public class Catalog {
     private List<Template> templates;
 
     // Memoized variables
+    private Map<String,Category> categoriesMap;
     private String defaultLogoutUrl;
-    private Map<String,List<Template>> categoryTemplates;
-    private Map<String,List<Category>> templateCategories;
+    private List<Category> rootCategories;
+    private Map<String,Template> templatesMap;
 
     /***************************************************************************
      * CONSTRUCTORS
@@ -126,11 +127,17 @@ public class Catalog {
      **************************************************************************/
 
     public static Catalog findById(HelperContext context, String catalogId) {
-        throw new UnsupportedOperationException("Not implemented.");
+        // Build the qualification String
+        String qualification ="'"+FIELD_ID+"'=\""+catalogId+"\"";
+        // Return all results that match the qualification
+        return findSingle(context, qualification);
     }
 
     public static Catalog findByName(HelperContext context, String catalogName) {
-        throw new UnsupportedOperationException("Not implemented.");
+        // Build the qualification String
+        String qualification ="'"+FIELD_NAME+"'=\""+catalogName+"\"";
+        // Return all results that match the qualification
+        return findSingle(context, qualification);
     }
 
     /***************************************************************************
@@ -150,25 +157,46 @@ public class Catalog {
     public List<Category> getCategories() {
         // If the association has not been retrieved yet
         if (categories == null) {
+            // Initialize the list of root categories
+            rootCategories = new ArrayList();
             // Build the association associated records
-            categories = Category.findByCatalogName(context, this.getName());
+            categories = Category.findByCatalogId(context, this.getId());
+
+            // Build a map of subcategories
+            Map<String,List<Category>> subcategoryMap = new LinkedHashMap();
+
+            // For each association record
+            for (Category category : categories) {
+                // Set the catalog
+                category.setCatalog(this);
+                // If this is a root category, add it to the list of root categories
+                if (category.getNameTrail().size() == 1) {
+                    rootCategories.add(category);
+                }
+                // If this is not a root category
+                else {
+                    // Retrieve the list of siblings from the subcategory map
+                    List<Category> siblings = subcategoryMap.get(category.getParentFullName());
+                    // If the sibling list does not exist
+                    if (siblings == null) {
+                        // Create it and add it to the map
+                        siblings = new ArrayList();
+                        subcategoryMap.put(category.getParentFullName(), siblings);
+                    }
+                    // Add the current category to the siblings list
+                    siblings.add(category);
+                }
+            }
+
+            // For each association record (loop again now that the
+            // subcategories map has been generated).
+            for (Category category : categories) {
+                // Map the subcategories for the current category
+                category.setSubcategories(subcategoryMap.get(category.getName()));
+            }
         }
         // Return the associated records
         return categories;
-    }
-
-    public List<Category> getRootCategories() {
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public List<Categorization> getCategorizations() {
-        // If the association has not been retrieved yet
-        if (categorizations == null) {
-            // Build the association associated records
-            categorizations = Categorization.findByCatalogId(context, this.getId());
-        }
-        // Return the associated records
-        return categorizations;
     }
 
     public List<Template> getTemplates() {
@@ -176,6 +204,11 @@ public class Catalog {
         if (templates == null) {
             // Build the association associated records
             templates = Template.findByCatalogName(context, this.getName());
+            // For each association record
+            for (Template template : templates) {
+                // Set the catalog
+                template.setCatalog(this);
+            }
         }
         // Return the associated records
         return templates;
@@ -216,6 +249,21 @@ public class Catalog {
      * HELPER METHODS
      **************************************************************************/
 
+    public Map<String,Category> getCategoriesMap() {
+        // If the collection has not been memoized yet
+        if (categoriesMap == null) {
+            // Initialize the collection
+            categoriesMap = new LinkedHashMap();
+            // For each of the associated items
+            for (Category category : getCategories()) {
+                // Add the item to the collection
+                categoriesMap.put(category.getId(), category);
+            }
+        }
+        // Return the memoized collection
+        return categoriesMap;
+    }
+
     /**
      * Returns the default URL that should redirected to upon logout.
      */
@@ -250,10 +298,38 @@ public class Catalog {
         return defaultLogoutUrl;
     }
 
+    public List<Category> getRootCategories() {
+        // If the collection has not been memoized yet
+        if (rootCategories == null) {
+            // Define the qualification
+            String qualification =
+                "'"+Category.FIELD_CATALOG_ID+"' = \""+getId()+"\" AND "+
+                "NOT ('"+Category.FIELD_NAME+"' LIKE \"%"+Category.DELIMITER+"%\")";
+            // Initialize the collection
+            rootCategories = Category.find(context, qualification);
+        }
+        // Return the memoized collection
+        return rootCategories;
+    }
+
+    public Map<String,Template> getTemplatesMap() {
+        // If the collection has not been memoized yet
+        if (templatesMap == null) {
+            // Initialize the collection
+            templatesMap = new LinkedHashMap();
+            // For each of the associated items
+            for (Template template : getTemplates()) {
+                // Add the item to the collection
+                templatesMap.put(template.getId(), template);
+            }
+        }
+        // Return the memoized collection
+        return templatesMap;
+    }
+
     /**
      * TODO: Document
      * * Load:
-     *   * Associated attributes
      *   * Associated categorizations
      *   * Associated categories
      *   * Associated templates
@@ -262,35 +338,46 @@ public class Catalog {
      *   * Set each of the categories sub-categories
      *   * Set each of the categories associated templates
      *   * Set each of the templates associated categories
+     *   * Set each of the templates attribute lists
      */
     public void preload() {
-        throw new UnsupportedOperationException("Not implemented.");
+        // Retrieve the map of category ids to category objects
+        Map<String,Category> categoriesMap = getCategoriesMap();
+        // Retrieve the map of template ids to template objects
+        Map<String,Template> templatesMap = getTemplatesMap();
+
+        // For each of the categorizations
+        for (Categorization categorization : getCategorizations()) {
+            // Retrieve the associated category from the map
+            Category category = categoriesMap.get(categorization.getCategoryId());
+            // Retrieve the associated template from the map
+            Template template = templatesMap.get(categorization.getTemplateId());
+            // If the category and template both exist, associate the two objects
+            if (category != null && template != null) {
+                category.addTemplate(template);
+                template.addCategory(category);
+            }
+        }
+
+        // Retrieve all attributes for templates that belong to this catalog
+        List<TemplateAttribute> templateAttributes = TemplateAttribute.findByCatalogId(context, getId());
+        // For each of the template attribute lists
+        for (TemplateAttribute attribute : templateAttributes) {
+            // Set the template attributes for the template if it exists
+            Template template = templatesMap.get(attribute.getTemplateId());
+            if (template != null) {
+                template.addAttribute(attribute);
+            }
+        }
     }
 
-    public void loadAttributes() {
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public void loadCategories() {
-        // Remember to set each of the categories sub-categories
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public void loadCategorizations() {
-        // Load the categorization records
-        // Load the templates records
-        // Load the categories records
-        // Set the categories associated templates
-        // Set the templates associated categories
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public void loadTemplates() {
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public void loadTemplateAttributes() {
-        loadTemplates();
-        throw new UnsupportedOperationException("Not implemented.");
+    private List<Categorization> getCategorizations() {
+        // If the association has not been retrieved yet
+        if (categorizations == null) {
+            // Build the association associated records
+            categorizations = Categorization.findByCatalogId(context, this.getId());
+        }
+        // Return the associated records
+        return categorizations;
     }
 }

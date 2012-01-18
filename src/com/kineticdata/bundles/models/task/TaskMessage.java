@@ -123,11 +123,6 @@ public class TaskMessage {
     }
 
     /***************************************************************************
-     * ASSOCIATION METHODS
-     **************************************************************************/
-
-
-    /***************************************************************************
      * ACCESSORS
      **************************************************************************/
 
@@ -135,5 +130,4 @@ public class TaskMessage {
     public String getId() {return entry.getEntryFieldValue(FIELD_ID);}
     public String getTaskId() {return entry.getEntryFieldValue(FIELD_TASK_ID);}
     public String getMessage() {return entry.getEntryFieldValue(FIELD_MESSAGE);}
-
 }

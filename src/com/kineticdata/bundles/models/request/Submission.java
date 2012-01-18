@@ -58,9 +58,8 @@ public class Submission {
     // Declare the associations for this record
     private List<Submission> children;
     private List<Submission> decendents;
-
-    // Declare the memoized variables
-
+    private Template template;
+    private List<TaskTraversal> traversals;
 
     /***************************************************************************
      * CONSTRUCTORS
@@ -169,32 +168,45 @@ public class Submission {
 
     public List<Submission> getDescendents() {
         // If the association has not been retrieved yet
-        if (children == null) {
+        if (decendents == null) {
             // Build the qualification
             String qualification =
                 "'"+FIELD_ORIGINATING_ID+"' = \""+getId()+"\" AND "+
                 "'"+FIELD_ID+"' != '"+FIELD_ORIGINATING_ID+"'";
             // Build the association associated records
-            children = find(context, qualification);
+            decendents = find(context, qualification);
         }
         // Return the associated records
-        return children;
+        return decendents;
     }
 
-    public List<TaskTree> getTaskTrees() {
-        throw new UnsupportedOperationException("Not implemented.");
+    public Template getTemplate() {
+        // If the association has not been retrieved yet
+        if (template == null) {
+            // Load the association
+            template = Template.findById(context, getTemplateId());
+        }
+        // Return the associated object
+        return template;
     }
 
-    public List<Task> getTasks() {
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public Map<TaskTree,List<Task>> getTaskTreeExecutions() {
-        throw new UnsupportedOperationException("Not implemented.");
-    }
-
-    public List<Task> getTaskTreeExecutions(String taskTreeId) {
-        throw new UnsupportedOperationException("Not implemented.");
+    public List<TaskTraversal> getTaskTraversals() {
+        // If the association has not been retrieved yet
+        if (traversals == null) {
+            // Build a map of tree names to trees
+            Map<String,TaskTree> treeMap = new LinkedHashMap();
+            for (TaskTree tree : getTemplate().getTaskTrees()) {
+                treeMap.put(tree.getName(), tree);
+            }
+            // Load the association
+            traversals = TaskTraversal.findBySource(context, "Kinetic Request", getId());
+            // Set the task trees
+            for (TaskTraversal traversal : traversals) {
+                traversal.setTree(treeMap.get(traversal.getTreeName()));
+            }
+        }
+        // Return the associated object
+        return traversals;
     }
 
     /***************************************************************************
@@ -213,9 +225,4 @@ public class Submission {
     public String getRequestStatus() {return entry.getEntryFieldValue(FIELD_REQUEST_STATUS);}
     public String getRequestClosedDate() {return entry.getEntryFieldValue(FIELD_REQUEST_CLOSED_DATE);}
     public String getValiationStatus() {return entry.getEntryFieldValue(FIELD_VALIDATION_STATUS);}
-
-    /***************************************************************************
-     * HELPER METHODS
-     **************************************************************************/
-
 }

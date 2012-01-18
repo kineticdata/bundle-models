@@ -29,12 +29,6 @@ public class Categorization {
     // Declare the SimpleEntry that represents the retrieved record
     private SimpleEntry entry;
 
-    // Declare the associations for this record
-
-
-    // Declare the memoized variables
-
-
     /***************************************************************************
      * CONSTRUCTORS
      **************************************************************************/
@@ -115,18 +109,26 @@ public class Categorization {
      * MODEL RETRIEVAL METHODS
      **************************************************************************/
 
+    public static List<Categorization> findByCategoryId(HelperContext context, String categoryId) {
+        // Build the qualification
+        String qualification = "'"+FIELD_CATEGORY_ID+"' = \""+categoryId+"\"";
+        // Return all results that match the qualification
+        return find(context, qualification);
+    }
+
     public static List<Categorization> findByCatalogId(HelperContext context, String catalogId) {
-        throw new UnsupportedOperationException("Not implemented.");
+        // Build the qualification
+        String qualification = "'"+FIELD_CATALOG_ID+"' = \""+catalogId+"\"";
+        // Return all results that match the qualification
+        return find(context, qualification);
     }
 
     public static List<Categorization> findByTemplateId(HelperContext context, String templateId) {
-        throw new UnsupportedOperationException("Not implemented.");
+        // Build the qualification
+        String qualification = "'"+FIELD_TEMPLATE_ID+"' = \""+templateId+"\"";
+        // Return all results that match the qualification
+        return find(context, qualification);
     }
-
-    /***************************************************************************
-     * ASSOCIATION METHODS
-     **************************************************************************/
-
 
     /***************************************************************************
      * ACCESSORS
@@ -134,9 +136,4 @@ public class Categorization {
 
     public String getCategoryId() {return entry.getEntryFieldValue(FIELD_CATEGORY_ID);}
     public String getTemplateId() {return entry.getEntryFieldValue(FIELD_TEMPLATE_ID);}
-
-    /***************************************************************************
-     * HELPER METHODS
-     **************************************************************************/
-
 }

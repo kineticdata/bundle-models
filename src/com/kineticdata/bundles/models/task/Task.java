@@ -21,16 +21,17 @@ public class Task {
     public static final String FIELD_SOURCE = "700000840";
     public static final String FIELD_SOURCE_ID = "700000830";
     public static final String FIELD_STATUS = "7";
+    public static final String FIELD_TREE_ID = "700000905";
     public static final String FIELD_TREE_NAME = "700066802";
     public static final String FIELD_VISIBLE = "700000914";
     // Specify the fields that should be retrieved from form records
     public static final String[] FIELD_IDS = new String[] {
         FIELD_CREATE_DATE, FIELD_ID, FIELD_MODIFIED_DATE, FIELD_NAME,
-        FIELD_SOURCE_ID, FIELD_STATUS, FIELD_TREE_NAME};
+        FIELD_SOURCE_ID, FIELD_STATUS, FIELD_TREE_ID, FIELD_TREE_NAME};
     // Specify the fields that should be used for default sorting (the model
     // will use the Remedy form default sort order if this array is empty).
     public static final String[] DEFAULT_SORT_FIELD_IDS = new String[] {
-        FIELD_CREATE_DATE};
+        FIELD_TREE_NAME, FIELD_CREATE_DATE};
 
     // Declare the HelperContext that was used to retrieve the record
     private HelperContext context;
@@ -154,5 +155,6 @@ public class Task {
     public String getName() {return entry.getEntryFieldValue(FIELD_NAME);}
     public String getSourceId() {return entry.getEntryFieldValue(FIELD_SOURCE_ID);}
     public String getStatus() {return entry.getEntryFieldValue(FIELD_STATUS);}
+    public String getTreeId() {return entry.getEntryFieldValue(FIELD_TREE_ID);}
     public String getTreeName() {return entry.getEntryFieldValue(FIELD_TREE_NAME);}
 }

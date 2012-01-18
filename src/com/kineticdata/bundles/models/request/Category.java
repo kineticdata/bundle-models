@@ -19,15 +19,16 @@ public class Category {
     public static final String FIELD_IMAGE_TAG = "700401930";
     public static final String FIELD_NAME = "700401900";
     public static final String FIELD_NUMBER_OF_ITEMS = "700401940";
-    public static final String FIELD_CATALOG = "600000500";
+    public static final String FIELD_CATALOG_NAME = "600000500";
+    public static final String FIELD_CATALOG_ID = "600000500";
     public static final String FIELD_SORT_ORDER = "700061010";
     public static final String FIELD_STATUS = "7";
     // Declare the delimiter that is used to separate nested categories
     public static final String DELIMITER = " :: ";
     // Specify the fields that should be retrieved from form records
     public static final String[] FIELD_IDS = new String[]{
-        FIELD_DESCRIPTION, FIELD_ID, FIELD_IMAGE_TAG, FIELD_NAME,
-        FIELD_NUMBER_OF_ITEMS, FIELD_STATUS};
+        FIELD_CATALOG_NAME, FIELD_DESCRIPTION, FIELD_ID, FIELD_IMAGE_TAG,
+        FIELD_NAME, FIELD_NUMBER_OF_ITEMS, FIELD_STATUS};
     // Specify the fields that should be used for the default sort order
     public static final String[] DEFAULT_SORT_FIELD_IDS = new String[]{
         FIELD_SORT_ORDER, FIELD_NAME};
@@ -38,12 +39,15 @@ public class Category {
     private SimpleEntry entry;
 
     // Declare the associations for the record
+    private Catalog catalog;
+    private List<Category> subcategories;
+    private List<Template> templates;
 
     // Memoized variables
-    String name;
-    List<String> nameTrail;
-    String parentFullName;
-    String parentName;
+    private String name;
+    private List<String> nameTrail;
+    private String parentFullName;
+    private String parentName;
 
     /***************************************************************************
      * CONSTRUCTORS
@@ -126,29 +130,89 @@ public class Category {
      **************************************************************************/
 
      public static List<Category> findByCatalogId(HelperContext context, String catalogId) {
-         throw new UnsupportedOperationException("Not implemented.");
-     }
-
-     public static List<Category> findByCatalogName(HelperContext context, String catalogName) {
-         throw new UnsupportedOperationException("Not implemented.");
+         // Build the qualification String
+         String qualification = "'"+FIELD_CATALOG_ID+"' = \""+catalogId+"\"";
+         // Return all results that match the qualification
+         return find(context, qualification);
      }
 
     /***************************************************************************
      * ASSOCIATION METHODS
      **************************************************************************/
 
-    public List<Category> getSubcategories() {
-        throw new UnsupportedOperationException("Not implemented.");
+    public void addTemplate(Template template) {
+        if (templates == null) { templates = new ArrayList(); }
+        templates.add(template);
     }
 
-    public List<Category> getTemplates() {
-        throw new UnsupportedOperationException("Not implemented.");
+    public void addSubcategory(Category category) {
+        if (subcategories == null) { subcategories = new ArrayList(); }
+        subcategories.add(category);
+    }
+
+    public Catalog getCatalog() {
+        // If the association has not been retrieved yet
+        if (catalog == null) {
+            // Load the association
+            catalog = Catalog.findByName(context, getCatalogName());
+        }
+        // Return the associated object
+        return catalog;
+    }
+
+    public List<Category> getSubcategories() {
+        if (subcategories == null) {
+            String qualification =
+                "'"+FIELD_CATALOG_ID+"' = \""+getCatalog().getId()+"\" AND "+
+                "'"+FIELD_NAME+"' LIKE \""+getFullName()+DELIMITER+"%\" AND "+
+                "NOT ('"+FIELD_NAME+"' LIKE \""+getFullName()+DELIMITER+"%"+DELIMITER+"\")";
+            subcategories = find(context, qualification);
+        }
+        return subcategories;
+    }
+
+    public List<Template> getTemplates() {
+        // If the association has not been memoized yet
+        if (templates == null){
+            // Initialize the association
+            templates = new ArrayList();
+            // Retrieve all templates for the current catalog (This is done so
+            // that all templates can be retrieved in a single query.  There is
+            // no form available that includes all of the necessary Template
+            // fields and the category name or id, and it is faster to retrieve
+            // all templates for a catalog and filter them via code than to
+            // retrieve each template individually).
+            Map<String,Template> catalogTemplates = getCatalog().getTemplatesMap();
+            // Retrieve all of the categorizations associated to this category
+            List<Categorization> categorizations = Categorization.findByCategoryId(context, getId());
+            // For each of the categorizations
+            for (Categorization categorization : categorizations) {
+                // Add the record to the association if it exists
+                Template template = catalogTemplates.get(categorization.getTemplateId());
+                if (template != null) { templates.add(template); }
+            }
+        }
+        // Return the association
+        return templates;
+    }
+
+    public void setCatalog(Catalog catalog) {
+        this.catalog = catalog;
+    }
+
+    public void setSubcategories(List<Category> subcategories) {
+        this.subcategories = subcategories;
+    }
+
+    public void setTemplates(List<Template> templates) {
+        this.templates = templates;
     }
 
     /***************************************************************************
      * ACCESSORS
      **************************************************************************/
 
+    public String getCatalogName() { return entry.getEntryFieldValue(FIELD_CATALOG_NAME); }
     public String getDescription() { return entry.getEntryFieldValue(FIELD_DESCRIPTION); }
     public String getFullName() {return entry.getEntryFieldValue(FIELD_NAME);}
     public String getId() {return entry.getEntryFieldValue(FIELD_ID);}
@@ -193,14 +257,21 @@ public class Category {
     }
 
     public boolean hasNonEmptySubcategories() {
-        throw new UnsupportedOperationException("Not implemented.");
+        boolean result = false;
+        for (Category category : getSubcategories()) {
+            if (category.hasTemplates() || category.hasNonEmptySubcategories()) {
+                result = true;
+                break;
+            }
+        }
+        return result;
     }
 
     public boolean hasSubcategories() {
-        throw new UnsupportedOperationException("Not implemented.");
+        return !getSubcategories().isEmpty();
     }
 
     public boolean hasTemplates() {
-        throw new UnsupportedOperationException("Not implemented.");
+        return !getTemplates().isEmpty();
     }
 }

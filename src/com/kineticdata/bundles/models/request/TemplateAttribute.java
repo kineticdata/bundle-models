@@ -21,7 +21,7 @@ public class TemplateAttribute {
     public static final String FIELD_TEMPLATE_ID = "700001107";
     // Specify the fields that should be retrieved from form records
     public static final String[] FIELD_IDS = new String[]{
-        FIELD_NAME, FIELD_VALUE, FIELD_CATALOG_ID};
+        FIELD_NAME, FIELD_VALUE, FIELD_CATALOG_ID,FIELD_TEMPLATE_ID};
     // Specify the fields that should be used for default sorting (the model
     // will use the Remedy form default sort order if this array is empty).
     public static final String[] DEFAULT_SORT_FIELD_IDS = new String[] {};
@@ -151,10 +151,22 @@ public class TemplateAttribute {
      **************************************************************************/
 
     /**
+     * Returns the id of the catalog that the associated template belongs to.
+     */
+    public String getCatalogId() {
+        return entry.getEntryFieldValue(FIELD_CATALOG_ID);
+    }
+    /**
      * Returns the name of the attribute.
      */
     public String getName() {
         return entry.getEntryFieldValue(FIELD_NAME);
+    }
+    /**
+     * Returns the id of the template this attribute is associated to.
+     */
+    public String getTemplateId() {
+        return entry.getEntryFieldValue(FIELD_TEMPLATE_ID);
     }
     /**
      * Returns the value of the attribute.
@@ -172,9 +184,4 @@ public class TemplateAttribute {
         // Return the value
         return value;
     }
-
-    /***************************************************************************
-     * HELPER METHODS
-     **************************************************************************/
-
 }
